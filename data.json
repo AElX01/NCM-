@@ -1,0 +1,17 @@
+{
+    "nodes": [
+        {
+            "ip": "10.0.6.1",
+            "username": "admin",
+            "port": "22",
+            "password": ""
+        },
+
+        {
+            "ip": "10.0.6.193",
+            "username": "admin",
+            "port": "22",
+            "password": ""
+        }
+    ]
+}
