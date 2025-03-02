@@ -21,5 +21,8 @@ int main(int argc, char *argv[]) {
         get_ssh_session(node);
     }
 
+    compare_backups();
+    system("backups/./push.sh");
+
     return OPERATION_COMPLETED;
 }

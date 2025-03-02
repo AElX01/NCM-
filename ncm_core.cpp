@@ -4,6 +4,7 @@
 #include "lib/ncm_libraries.hpp"
 
 
+
 Node::Node(string node_ip, string node_username, string node_port, string node_password) {
     ipv4 = node_ip;
     username = node_username;
@@ -83,6 +84,46 @@ set<Node> get_nodes(json devices) {
     return network_nodes;
 }
 
+bool files_are_equal(const string& file1, const string& file2) {
+    ifstream f1(file1, ios::binary);
+    ifstream f2(file2, ios::binary);
+
+    if (!f1 || !f2) return false;
+
+    if (fs::file_size(file1) != fs::file_size(file2)) return false;
+
+    return equal(istreambuf_iterator<char>(f1), istreambuf_iterator<char>(),
+                 istreambuf_iterator<char>(f2));
+}
+
+void compare_backups() {
+    const string base_directory = "backups";
+    unordered_map<string, vector<string>> backup_groups;
+
+    // Group files by their parent directory
+    for (const auto& entry : fs::recursive_directory_iterator(base_directory)) {
+        if (!entry.is_directory()) {
+            string parent_dir = entry.path().parent_path().string(); // Get the parent directory
+            backup_groups[parent_dir].push_back(entry.path().string());
+        }
+    }
+
+    // Compare files only within the same directory
+    for (auto& group : backup_groups) {
+        const vector<string>& backups = group.second;
+        for (size_t i = 0; i < backups.size(); ++i) {
+            for (size_t j = i + 1; j < backups.size(); ++j) {
+                if (files_are_equal(backups[i], backups[j])) {
+                    fs::remove(backups[j]);
+                } else {
+                    fs::remove(backups[j]);
+                }
+            }
+        }
+    }
+}
+
+
 int backup_config(ssh_session session, string ip) {
     ssh_channel channel;
     int rc;
@@ -91,7 +132,7 @@ int backup_config(ssh_session session, string ip) {
     time_t timestamp = time(NULL);
     struct tm date = *localtime(&timestamp);
     char output[50];
-    strftime(output, 50, "%d-%b-%y@%H:%M%S", &date);
+    strftime(output, 50, "%d-%b-%y@%H:%M:%S", &date);
     string backup_name = (string) output + "-" + ip + ".txt";
     string backup_path = "backups/" + ip + "/" + backup_name;
 
