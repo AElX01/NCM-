@@ -12,7 +12,7 @@ int main(int argc, char *argv[]) {
         return help_menu(TOO_MUCH_ARGUMENTS);
     
     json file = get_json(argv[1]);
-    if (!file) return ERROR_OPENING_FILE;
+    if (!file.size()) return ERROR_OPENING_FILE; 
 
     set<Node> network_nodes = get_nodes(file);
     mkdir("backups", 0700);

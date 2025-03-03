@@ -54,13 +54,13 @@ STATUS_CODES help_menu(STATUS_CODES error) {
 
 json get_json(const char *devices) {
     ifstream file(devices);
+    json nodes;
 
     if (!file) {
         cerr << OPENING_FILE_ERROR << endl;
-        return NULL;
+        return nodes;
     } 
 
-    json nodes;
     file >> nodes;
 
     return nodes;
@@ -179,13 +179,13 @@ int backup_config(ssh_session session, string ip) {
 STATUS_CODES get_ssh_session(Node device) {
     ssh_session session = ssh_new();
     
-    string node_ip = device.getIP();
+    string node_host = device.getIP();
     string node_port = device.getPort();
     string node_username = device.getUsername();
     string node_password = device.getPassword();
 
-    const char *host = node_ip.c_str();
-    const char *port = node_port.c_str();
+    const char *host = node_host.c_str();
+    int port = stoi(node_port);
     const char *username = node_username.c_str();
     const char *password = node_password.c_str();
 
@@ -197,6 +197,8 @@ STATUS_CODES get_ssh_session(Node device) {
     } else {
         ssh_options_set(session, SSH_OPTIONS_HOST, host);
         ssh_options_set(session, SSH_OPTIONS_USER, username);
+        ssh_options_set(session, SSH_OPTIONS_PASSWORD_AUTH, password);
+        ssh_options_set(session, SSH_OPTIONS_PORT, &port);
         
         /*
         NETWORK DEVICES MIGHT BE RUNNING A CISCO IOS VERSION THAT DOES NOT SUPPORT MODERN CIPHERS,
