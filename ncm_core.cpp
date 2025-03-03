@@ -16,6 +16,7 @@ string Node::getNodeDetails() {
     return ipv4 + ":" + port + " connects as " + username + "\n";
 }
 
+// NETWORK NODES ARE COMPARED BASED ON THEIR IPS WHEN INSERTING THEM IN A SET
 bool Node::operator<(const Node& other) const {
     return (ipv4 < other.ipv4) || 
     (ipv4 == other.ipv4 && port < other.port) || 
@@ -84,6 +85,7 @@ set<Node> get_nodes(json devices) {
     return network_nodes;
 }
 
+//COMPARE IF BOTH FILES HAVE THE SAME CONTENTS
 bool files_are_equal(const string& file1, const string& file2) {
     ifstream f1(file1, ios::binary);
     ifstream f2(file2, ios::binary);
@@ -100,15 +102,15 @@ void compare_backups() {
     const string base_directory = "backups";
     unordered_map<string, vector<string>> backup_groups;
 
-    // Group files by their parent directory
+    // GROUP FILES ACORDING TO THEIR PARENT DIRECTORY
     for (const auto& entry : fs::recursive_directory_iterator(base_directory)) {
         if (!entry.is_directory()) {
-            string parent_dir = entry.path().parent_path().string(); // Get the parent directory
+            string parent_dir = entry.path().parent_path().string();
             backup_groups[parent_dir].push_back(entry.path().string());
         }
     }
 
-    // Compare files only within the same directory
+    // COMPARE FILES ONLY INSIDE THEIR DIRECTORIES, NOT AGAINST FILES IN OTHER DIRECTORIES
     for (auto& group : backup_groups) {
         const vector<string>& backups = group.second;
         for (size_t i = 0; i < backups.size(); ++i) {
@@ -116,13 +118,12 @@ void compare_backups() {
                 if (files_are_equal(backups[i], backups[j])) {
                     fs::remove(backups[j]);
                 } else {
-                    fs::remove(backups[j]);
+                    fs::remove(backups[i]);
                 }
             }
         }
     }
 }
-
 
 int backup_config(ssh_session session, string ip) {
     ssh_channel channel;
@@ -133,7 +134,7 @@ int backup_config(ssh_session session, string ip) {
     struct tm date = *localtime(&timestamp);
     char output[50];
     strftime(output, 50, "%d-%b-%y@%H:%M:%S", &date);
-    string backup_name = (string) output + "-" + ip + ".txt";
+    string backup_name = (string) output + "-" + ip + ".txt"; // BACKUP NAME FORMAT IN FORMAT %d-%b-%y@%H:%M:%S-x.x.x.x.txt
     string backup_path = "backups/" + ip + "/" + backup_name;
 
 
@@ -148,7 +149,7 @@ int backup_config(ssh_session session, string ip) {
         return rc;
     }
 
-    rc = ssh_channel_request_exec(channel, "show running-config");
+    rc = ssh_channel_request_exec(channel, "show running-config"); // GET THE FILE CONFIGS WITH THE "show run" COMMAND
     if (rc != SSH_OK) {
         ssh_channel_close(channel);
         ssh_channel_free(channel);
@@ -196,6 +197,12 @@ STATUS_CODES get_ssh_session(Node device) {
     } else {
         ssh_options_set(session, SSH_OPTIONS_HOST, host);
         ssh_options_set(session, SSH_OPTIONS_USER, username);
+        
+        /*
+        NETWORK DEVICES MIGHT BE RUNNING A CISCO IOS VERSION THAT DOES NOT SUPPORT MODERN CIPHERS,
+        THE PROGRAM WILL TRY TO CONNECT VIA SSH WITH SECURE ENOUGH CIPHERS TO HAVE FAST CONNECTIVITY,
+        SECURITY AND COMPATIBILITY
+        */
         ssh_options_set(session, SSH_OPTIONS_KEY_EXCHANGE, "diffie-hellman-group14-sha1");
         ssh_options_set(session, SSH_OPTIONS_HOSTKEYS, "ssh-rsa");
         ssh_options_set(session, SSH_OPTIONS_CIPHERS_C_S, "aes128-cbc");
@@ -216,7 +223,7 @@ STATUS_CODES get_ssh_session(Node device) {
             return WRONG_PASSWORD;
         }
 
-        if (backup_config(session, device.getIP()) != 0) 
+        if (backup_config(session, device.getIP())) 
             OPERATION_STATUS = CANNOT_BACKUP;
         
         ssh_disconnect(session);
