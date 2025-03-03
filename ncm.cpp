@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
     }
 
     compare_backups();
-    system("backups/./push.sh");
+    system("./push.sh");
 
     return OPERATION_COMPLETED;
 }
