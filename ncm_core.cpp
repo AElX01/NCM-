@@ -100,30 +100,39 @@ bool files_are_equal(const string& file1, const string& file2) {
 
 void compare_backups() {
     const string base_directory = "backups";
-    unordered_map<string, vector<string>> backup_groups;
+    unordered_map<string, vector<fs::path>> backup_groups;
 
-    // GROUP FILES ACORDING TO THEIR PARENT DIRECTORY
+    // GROUP FILES ACCORDING TO THEIR PARENT DIRECTORY
     for (const auto& entry : fs::recursive_directory_iterator(base_directory)) {
         if (!entry.is_directory()) {
             string parent_dir = entry.path().parent_path().string();
-            backup_groups[parent_dir].push_back(entry.path().string());
+            backup_groups[parent_dir].push_back(entry.path());
         }
     }
 
-    // COMPARE FILES ONLY INSIDE THEIR DIRECTORIES, NOT AGAINST FILES IN OTHER DIRECTORIES
+    // COMPARE FILES INSIDE THEIR DIRECTORIES
     for (auto& group : backup_groups) {
-        const vector<string>& backups = group.second;
+        vector<fs::path>& backups = group.second;
+
+        // SORTS FILES BY DATE
+        sort(backups.begin(), backups.end(), [](const fs::path& a, const fs::path& b) {
+            return a.filename().string() < b.filename().string();
+        });
+
         for (size_t i = 0; i < backups.size(); ++i) {
             for (size_t j = i + 1; j < backups.size(); ++j) {
-                if (files_are_equal(backups[i], backups[j])) {
-                    fs::remove(backups[j]);
-                } else {
-                    fs::remove(backups[i]);
+                if (fs::exists(backups[i]) && fs::exists(backups[j])) {
+                    if (files_are_equal(backups[i], backups[j])) {
+                        fs::remove(backups[j]); // REMOVE NEWEST DUPLICATED FILE
+                    } else {
+                        fs::remove(backups[i]); // REMOVE OLDEST BACKUP IF FILES ARE DIFFERENT
+                    }
                 }
             }
         }
     }
 }
+
 
 int backup_config(ssh_session session, string ip) {
     ssh_channel channel;
